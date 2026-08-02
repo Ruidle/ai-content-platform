@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 内容生成平台</title>
+  <style>
+    /* ============ 主题变量 ============ */
+    :root {
+      --bg: #f5f7fb;
+      --bg-card: #ffffff;
+      --bg-sidebar: #ffffff;
+      --text: #1a202c;
+      --text-secondary: #64748b;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+      --code-bg: #f1f5f9;
+      --error: #ef4444;
+      --success: #10b981;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --bg-sidebar: #1e293b;
+      --text: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --primary: #60a5fa;
+      --primary-hover: #3b82f6;
+      --border: #334155;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
+      --code-bg: #0f172a;
+      --error: #f87171;
+      --success: #34d399;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ============ 顶部导航 ============ */
+    header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+
+    .header-left h1 {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-left p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .theme-toggle {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.05);
+    }
+
+    /* ============ 主体布局 ============ */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 0;
+      height: calc(100vh - 73px);
+    }
+
+    /* ============ 侧边栏（历史记录） ============ */
+    .sidebar {
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-header h2 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .refresh-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .refresh-btn:hover {
+      background: var(--bg);
+    }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .history-item {
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 4px;
+      border: 1px solid transparent;
+    }
+
+    .history-item:hover {
+      background: var(--bg);
+    }
+
+    .history-item.active {
+      background: var(--bg);
+      border-color: var(--primary);
+    }
+
+    .history-item .topic {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-item .time {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .empty-history {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 40px 20px;
+      font-size: 13px;
+    }
+
+    /* ============ 语义搜索框 ============ */
+    .search-box {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-box input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .search-hint {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      min-height: 14px;
+    }
+
+    .search-hint.error { color: var(--error); }
+
+    /* 搜索结果相似度标签 */
+    .similarity-tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--primary);
+      color: #fff;
+      margin-top: 4px;
+    }
+
+    .search-result-item .topic {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* ============ 主内容区 ============ */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 24px;
+      gap: 16px;
+    }
+
+    /* 输入区 */
+    .input-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .input-row textarea {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      min-height: 48px;
+      max-height: 120px;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+
+    .input-row textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .generate-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+      height: 48px;
+    }
+
+    .generate-btn:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .generate-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .voice-btn {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .voice-btn:hover:not(:disabled) {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .voice-btn.recording {
+      background: #ef4444;
+      border-color: #ef4444;
+      color: #fff;
+      animation: voice-pulse 1.2s infinite;
+    }
+
+    .voice-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    @keyframes voice-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.95); }
+    }
+
+    /* 展示区 */
+    .output-section {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .output-header h3 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .copy-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .content-area {
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .content-area h1,
+    .content-area h2,
+    .content-area h3 {
+      margin: 16px 0 8px;
+    }
+
+    .content-area code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .content-area pre {
+      background: var(--code-bg);
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+
+    .content-area pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .placeholder {
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 14px;
+    }
+
+    .placeholder .icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 12px;
+      opacity: 0.4;
+    }
+
+    /* 打字机光标 */
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 18px;
+      background: var(--primary);
+      margin-left: 2px;
+      animation: blink 1s infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* 状态提示 */
+    .status-bar {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-bar.error { color: var(--error); }
+    .status-bar.success { color: var(--success); }
+
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Toast 提示 */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--text);
+      color: var(--bg);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: var(--shadow-lg);
+      transition: transform 0.3s;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ============ 用户区 + 退出 ============ */
+    .user-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-name {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .logout-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .logout-btn:hover {
+      color: var(--error);
+      border-color: var(--error);
+    }
+
+    /* ============ 历史记录删除按钮 ============ */
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .history-item .item-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      flex-shrink: 0;
+      opacity: 0.6;
+    }
+
+    .history-item:hover .delete-btn {
+      opacity: 1;
+    }
+
+    .delete-btn:hover {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--error);
+    }
+
+    /* ============ 编辑按钮 + 编辑态 ============ */
+    .edit-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .edit-btn:hover:not(:disabled) {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .edit-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .edit-btn.saving {
+      opacity: 0.6;
+      cursor: progress;
+    }
+
+    .content-edit-area {
+      width: 100%;
+      min-height: 240px;
+      border: 1px solid var(--primary);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 15px;
+      line-height: 1.8;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      resize: vertical;
+      outline: none;
+    }
+
+    /* ============ 登录/注册遮罩 ============ */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+
+    .auth-overlay.hidden {
+      display: none;
+    }
+
+    .auth-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 400px;
+      padding: 32px;
+      animation: auth-pop 0.25s ease;
+    }
+
+    @keyframes auth-pop {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .auth-title {
+      font-size: 20px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .auth-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .auth-tabs {
+      display: flex;
+      gap: 6px;
+      background: var(--bg);
+      padding: 4px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 8px 0;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-radius: 7px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .auth-tab.active {
+      background: var(--bg-card);
+      color: var(--primary);
+      box-shadow: var(--shadow);
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .auth-form.hidden {
+      display: none;
+    }
+
+    .auth-form label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .auth-form input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+
+    .auth-form input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .auth-submit {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 0;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      font-family: inherit;
+      margin-top: 4px;
+    }
+
+    .auth-submit:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .auth-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .auth-error {
+      color: var(--error);
+      font-size: 13px;
+      min-height: 18px;
+      text-align: center;
+    }
+
+    .auth-switch {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+
+    .auth-switch a {
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .auth-switch a:hover {
+      text-decoration: underline;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <!-- 顶部导航 -->
+  <header>
+    <div class="header-left">
+      <h1>AI 内容生成平台</h1>
+      <p>基于 DeepSeek + 流式输出 + 向量存储的智能内容创作工具</p>
+    </div>
+    <div class="header-right">
+      <div class="user-area" id="userArea" style="display:none;">
+        <span class="user-name" id="userName">👤</span>
+        <button class="logout-btn" id="logoutBtn" type="button">退出</button>
+      </div>
+      <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- 侧边栏：历史记录 + 语义搜索 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>历史记录</h2>
+        <button class="refresh-btn" id="refreshBtn" title="刷新">🔄</button>
+      </div>
+      <!-- RAG 语义搜索框 -->
+      <div class="search-box">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="🔍 语义搜索历史内容..."
+          autocomplete="off"
+        />
+        <div class="search-hint" id="searchHint"></div>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="empty-history">暂无历史记录</div>
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main">
+      <!-- 输入区 -->
+      <div class="input-section">
+        <div class="input-row">
+          <textarea
+            id="topicInput"
+            placeholder="输入你想生成的主题，例如：人工智能在教育领域的应用"
+            rows="1"
+          ></textarea>
+          <button class="voice-btn" id="voiceBtn" type="button" title="语音输入" aria-label="语音输入">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+          </button>
+          <button class="generate-btn" id="generateBtn">生成内容</button>
+        </div>
+      </div>
+
+      <!-- 展示区 -->
+      <div class="output-section">
+        <div class="output-header">
+          <h3>生成结果</h3>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <span class="status-bar" id="statusBar"></span>
+            <button class="edit-btn" id="editBtn" disabled>编辑</button>
+            <button class="copy-btn" id="copyBtn">复制</button>
+          </div>
+        </div>
+        <div class="content-area" id="contentArea">
+          <div class="placeholder">
+            <span class="icon">✨</span>
+            输入主题后点击「生成内容」，AI 将为你创作文章
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 登录/注册遮罩 -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div class="auth-title">AI 内容生成平台</div>
+      <div class="auth-subtitle">登录后即可使用流式生成与语义搜索</div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" type="button">登录</button>
+        <button class="auth-tab" id="tabRegister" type="button">注册</button>
+      </div>
+
+      <!-- 登录表单 -->
+      <form class="auth-form" id="loginForm">
+        <label for="loginUsername">用户名</label>
+        <input type="text" id="loginUsername" autocomplete="username" required />
+        <label for="loginPassword">密码</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required />
+        <div class="auth-error" id="loginError"></div>
+        <button type="submit" class="auth-submit" id="loginSubmit">登录</button>
+        <div class="auth-switch">还没有账号？<a id="toRegister">立即注册</a></div>
+      </form>
+
+      <!-- 注册表单 -->
+      <form class="auth-form hidden" id="registerForm">
+        <label for="regUsername">用户名</label>
+        <input type="text" id="regUsername" autocomplete="username" required />
+        <label for="regEmail">邮箱</label>
+        <input type="email" id="regEmail" autocomplete="email" required />
+        <label for="regPassword">密码</label>
+        <input type="password" id="regPassword" autocomplete="new-password" required />
+        <div class="auth-error" id="registerError"></div>
+        <button type="submit" class="auth-submit" id="registerSubmit">注册</button>
+        <div class="auth-switch">已有账号？<a id="toLogin">去登录</a></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ============ 配置 ============
+    // 后端 API 地址：本地开发用 http://localhost:8000，部署后改为线上地址
+    const API_BASE = window.location.hostname === 'localhost'
+      ? 'http://localhost:8000'
+      : 'https://ai-content-backend.onrender.com'; // 部署后替换为你的 Render 后端地址
+
+    // ============ DOM 元素 ============
+    const topicInput = document.getElementById('topicInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const contentArea = document.getElementById('contentArea');
+    const historyList = document.getElementById('historyList');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const editBtn = document.getElementById('editBtn');
+    const themeToggle = document.getElementById('themeToggle');
+    const statusBar = document.getElementById('statusBar');
+    const toast = document.getElementById('toast');
+    const searchInput = document.getElementById('searchInput');
+    const searchHint = document.getElementById('searchHint');
+
+    // 鉴权相关 DOM
+    const authOverlay = document.getElementById('authOverlay');
+    const tabLogin = document.getElementById('tabLogin');
+    const tabRegister = document.getElementById('tabRegister');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const loginError = document.getElementById('loginError');
+    const registerError = document.getElementById('registerError');
+    const loginSubmit = document.getElementById('loginSubmit');
+    const registerSubmit = document.getElementById('registerSubmit');
+    const userArea = document.getElementById('userArea');
+    const userName = document.getElementById('userName');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // ============ 状态 ============
+    let isGenerating = false;
+    let currentContent = '';
+    let currentHistoryId = null;   // 当前展示的历史记录 id（用于编辑/删除）
+    let isEditing = false;         // 是否处于编辑态
+    let abortController = null;
+
+    // ============ JWT token 管理 ============
+    function getToken() {
+      return localStorage.getItem('access_token');
+    }
+    function setToken(t) {
+      localStorage.setItem('access_token', t);
+    }
+    function removeToken() {
+      localStorage.removeItem('access_token');
+    }
+    // 普通鉴权请求头
+    function authHeaders() {
+      const token = getToken();
+      return token ? { Authorization: 'Bearer ' + token } : {};
+    }
+
+    // 401 统一处理：清 token + 显示登录遮罩
+    function handleUnauthorized(message) {
+      removeToken();
+      userArea.style.display = 'none';
+      showAuthOverlay();
+      if (message) showToast(message);
+    }
+
+    function showAuthOverlay() {
+      authOverlay.classList.remove('hidden');
+    }
+    function hideAuthOverlay() {
+      authOverlay.classList.add('hidden');
+    }
+
+    // tab 切换
+    function switchTab(which) {
+      if (which === 'login') {
+        tabLogin.classList.add('active');
+        tabRegister.classList.remove('active');
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+        loginError.textContent = '';
+      } else {
+        tabRegister.classList.add('active');
+        tabLogin.classList.remove('active');
+        registerForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+        registerError.textContent = '';
+      }
+    }
+    tabLogin.addEventListener('click', () => switchTab('login'));
+    tabRegister.addEventListener('click', () => switchTab('register'));
+    document.getElementById('toRegister').addEventListener('click', () => switchTab('register'));
+    document.getElementById('toLogin').addEventListener('click', () => switchTab('login'));
+
+    // 登录
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      if (!username || !password) {
+        loginError.textContent = '请输入用户名和密码';
+        return;
+      }
+      loginError.textContent = '';
+      loginSubmit.disabled = true;
+      loginSubmit.textContent = '登录中...';
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `登录失败：${res.status}`);
+        }
+        const data = await res.json();
+        setToken(data.access_token);
+        await onAuthed(data.user);
+      } catch (err) {
+        loginError.textContent = err.message;
+      } finally {
+        loginSubmit.disabled = false;
+        loginSubmit.textContent = '登录';
+      }
+    });
+
+    // 注册
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      if (!username || !email || !password) {
+        registerError.textContent = '请填写完整信息';
+        return;
+      }
+      registerError.textContent = '';
+      registerSubmit.disabled = true;
+      registerSubmit.textContent = '注册中...';
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `注册失败：${res.status}`);
+        }
+        // 注册成功后自动走登录流程
+        const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        if (!loginRes.ok) {
+          // 注册成功但登录失败，切到登录 tab 让用户手动登录
+          switchTab('login');
+          loginError.textContent = '注册成功，请登录';
+          return;
+        }
+        const data = await loginRes.json();
+        setToken(data.access_token);
+        await onAuthed(data.user);
+      } catch (err) {
+        registerError.textContent = err.message;
+      } finally {
+        registerSubmit.disabled = false;
+        registerSubmit.textContent = '注册';
+      }
+    });
+
+    // 退出
+    logoutBtn.addEventListener('click', () => {
+      removeToken();
+      userArea.style.display = 'none';
+      currentHistoryId = null;
+      currentContent = '';
+      contentArea.innerHTML = '<div class="placeholder"><span class="icon">✨</span>输入主题后点击「生成内容」，AI 将为你创作文章</div>';
+      editBtn.disabled = true;
+      historyList.innerHTML = '<div class="empty-history">暂无历史记录</div>';
+      showAuthOverlay();
+      showToast('已退出登录');
+    });
+
+    // 鉴权成功后：隐藏遮罩、显示用户名、加载历史
+    async function onAuthed(user) {
+      hideAuthOverlay();
+      if (user && user.username) {
+        userName.textContent = '👤 ' + user.username;
+      }
+      userArea.style.display = 'flex';
+      await loadHistory();
+      showToast('欢迎，' + (user && user.username ? user.username : ''));
+    }
+
+    // 页面加载时校验 token
+    async function checkAuth() {
+      const token = getToken();
+      if (!token) {
+        showAuthOverlay();
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: { ...authHeaders() },
+        });
+        if (res.status === 401) {
+          handleUnauthorized('登录已过期，请重新登录');
+          return;
+        }
+        if (!res.ok) {
+          showAuthOverlay();
+          return;
+        }
+        const user = await res.json();
+        await onAuthed(user);
+      } catch (err) {
+        showAuthOverlay();
+      }
+    }
+
+    // ============ 主题切换 ============
+    function initTheme() {
+      const saved = localStorage.getItem('theme') || 'light';
+      document.body.setAttribute('data-theme', saved);
+      themeToggle.textContent = saved === 'dark' ? '☀️' : '🌙';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      const current = document.body.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      themeToggle.textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+
+    // ============ Toast 提示 ============
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // ============ 状态栏 ============
+    function setStatus(text, type = '', withSpinner = false) {
+      const spinner = withSpinner ? '<span class="spinner"></span>' : '';
+      statusBar.className = 'status-bar' + (type ? ' ' + type : '');
+      statusBar.innerHTML = spinner + (text ? `<span>${text}</span>` : '');
+    }
+
+    // ============ 简易 Markdown 渲染 ============
+    function renderMarkdown(text) {
+      // 转义 HTML
+      let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      // 代码块
+      html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+      // 行内代码
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      // 标题
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      // 粗体
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      // 换行
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    }
+
+    // ============ 生成内容（SSE 流式） ============
+    async function generate() {
+      const topic = topicInput.value.trim();
+      if (!topic) {
+        showToast('请输入主题');
+        return;
+      }
+      if (isGenerating) return;
+
+      isGenerating = true;
+      currentContent = '';
+      currentHistoryId = null;
+      editBtn.disabled = true;
+      exitEditMode();
+      generateBtn.disabled = true;
+      generateBtn.textContent = '生成中...';
+      contentArea.innerHTML = '<span class="cursor"></span>';
+      setStatus('正在生成', '', true);
+
+      // 使用 fetch + ReadableStream 处理 SSE
+      abortController = new AbortController();
+
+      try {
+        const response = await fetch(`${API_BASE}/api/generate`, {
+          method: 'POST',
+          // SSE 不设 text/event-stream，保持 json，额外加 Authorization
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ topic }),
+          signal: abortController.signal,
+        });
+
+        if (response.status === 401) {
+          handleUnauthorized('登录已过期，请重新登录');
+          return;
+        }
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `请求失败：${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // 保留不完整的行
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            // 解析 SSE 事件
+            if (line.startsWith('event:')) {
+              const eventType = line.slice(6).trim();
+              // 读取下一行的 data
+              continue;
+            }
+            if (line.startsWith('data:')) {
+              const dataStr = line.slice(5).trim();
+              if (!dataStr || dataStr === '[DONE]') continue;
+
+              try {
+                const data = JSON.parse(dataStr);
+
+                if (data.error) {
+                  setStatus(`错误：${data.error}`, 'error');
+                  break;
+                }
+
+                if (data.content) {
+                  currentContent += data.content;
+                  contentArea.innerHTML = renderMarkdown(currentContent) + '<span class="cursor"></span>';
+                  // 自动滚动到底部
+                  contentArea.parentElement.scrollTop = contentArea.parentElement.scrollHeight;
+                }
+
+                if (data.id) {
+                  // 生成完成，记录当前 id 并允许编辑
+                  currentHistoryId = data.id;
+                  editBtn.disabled = false;
+                  setStatus('生成完成', 'success');
+                  setTimeout(() => loadHistory(), 500);
+                }
+              } catch (e) {
+                // 忽略解析错误
+              }
+            }
+          }
+        }
+
+        if (!currentContent) {
+          contentArea.innerHTML = '<div class="placeholder"><span class="icon">⚠️</span>未获取到内容，请重试</div>';
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          setStatus('已取消', '');
+        } else {
+          setStatus(`错误：${err.message}`, 'error');
+          contentArea.innerHTML = `<div class="placeholder"><span class="icon">⚠️</span>${err.message}</div>`;
+        }
+      } finally {
+        isGenerating = false;
+        generateBtn.disabled = false;
+        generateBtn.textContent = '生成内容';
+        // 移除光标
+        const cursor = contentArea.querySelector('.cursor');
+        if (cursor) cursor.remove();
+        abortController = null;
+      }
+    }
+
+    generateBtn.addEventListener('click', generate);
+
+    // 回车（Shift+Enter 换行）
+    topicInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        generate();
+      }
+    });
+
+    // 自动调整输入框高度
+    topicInput.addEventListener('input', () => {
+      topicInput.style.height = 'auto';
+      topicInput.style.height = topicInput.scrollHeight + 'px';
+    });
+
+    // ============ 语音输入（Web Speech API） ============
+    const voiceBtn = document.getElementById('voiceBtn');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isRecording = false;
+    let voiceBaseText = '';
+
+    function stopRecording() {
+      isRecording = false;
+      voiceBtn.classList.remove('recording');
+      voiceBtn.title = '语音输入';
+    }
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'zh-CN';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            final += transcript;
+          } else {
+            interim += transcript;
+          }
+        }
+        if (final) voiceBaseText += final;
+        topicInput.value = voiceBaseText + interim;
+        topicInput.style.height = 'auto';
+        topicInput.style.height = topicInput.scrollHeight + 'px';
+      };
+
+      // 停顿后自动续录，保持持续识别
+      recognition.onend = () => {
+        if (isRecording) {
+          try { recognition.start(); } catch (e) { stopRecording(); }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        stopRecording();
+        showToast('语音识别出错：' + event.error);
+      };
+
+      voiceBtn.addEventListener('click', () => {
+        if (isRecording) {
+          stopRecording();
+          try { recognition.stop(); } catch (e) {}
+        } else {
+          voiceBaseText = topicInput.value;
+          try {
+            recognition.start();
+            isRecording = true;
+            voiceBtn.classList.add('recording');
+            voiceBtn.title = '点击停止';
+            showToast('开始语音输入，请说话...');
+          } catch (e) {
+            showToast('无法启动语音识别');
+          }
+        }
+      });
+    } else {
+      voiceBtn.disabled = true;
+      voiceBtn.title = '当前浏览器不支持语音识别（请使用 Chrome 或 Edge）';
+    }
+
+    // ============ 历史记录 ============
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${API_BASE}/api/history`, {
+          headers: { ...authHeaders() },
+        });
+        if (res.status === 401) {
+          handleUnauthorized('登录已过期，请重新登录');
+          return;
+        }
+        if (!res.ok) throw new Error('加载失败');
+        const data = await res.json();
+
+        if (!data.length) {
+          historyList.innerHTML = '<div class="empty-history">暂无历史记录</div>';
+          return;
+        }
+
+        historyList.innerHTML = data.map(item => `
+          <div class="history-item" data-id="${item.id}">
+            <div class="item-main">
+              <div class="topic">${escapeHtml(item.topic)}</div>
+              <div class="time">${formatTime(item.created_at)}</div>
+            </div>
+            <button class="delete-btn" data-id="${item.id}" title="删除" type="button">🗑</button>
+          </div>
+        `).join('');
+
+        // 保留当前选中项的高亮
+        if (currentHistoryId !== null) {
+          const cur = historyList.querySelector(`.history-item[data-id="${currentHistoryId}"]`);
+          if (cur) cur.classList.add('active');
+        }
+
+        bindHistoryItemEvents();
+      } catch (err) {
+        historyList.innerHTML = '<div class="empty-history">加载历史失败</div>';
+      }
+    }
+
+    // 给历史项绑定点击 + 删除事件（历史列表与搜索结果共用）
+    function bindHistoryItemEvents() {
+      historyList.querySelectorAll('.history-item').forEach(el => {
+        el.addEventListener('click', () => loadHistoryDetail(el.dataset.id, el));
+      });
+      historyList.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation(); // 避免触发历史项的点击加载
+          deleteHistory(btn.dataset.id);
+        });
+      });
+    }
+
+    async function loadHistoryDetail(id, el) {
+      try {
+        // 高亮选中项
+        historyList.querySelectorAll('.history-item').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+
+        const res = await fetch(`${API_BASE}/api/history/${id}`, {
+          headers: { ...authHeaders() },
+        });
+        if (res.status === 401) {
+          handleUnauthorized('登录已过期，请重新登录');
+          return;
+        }
+        if (!res.ok) throw new Error('加载失败');
+        const data = await res.json();
+
+        currentContent = data.content;
+        currentHistoryId = data.id;
+        exitEditMode();
+        contentArea.innerHTML = renderMarkdown(data.content);
+        editBtn.disabled = false;
+        topicInput.value = data.topic;
+        setStatus(`来自历史记录 · ${formatTime(data.created_at)}`, 'success');
+      } catch (err) {
+        showToast('加载详情失败');
+      }
+    }
+
+    // 删除历史记录
+    async function deleteHistory(id) {
+      if (!id) return;
+      if (!confirm('确定删除这条历史记录吗？')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/history/${id}`, {
+          method: 'DELETE',
+          headers: { ...authHeaders() },
+        });
+        if (res.status === 401) {
+          handleUnauthorized('登录已过期，请重新登录');
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || '删除失败');
+        }
+        // 从列表中移除该条
+        const itemEl = historyList.querySelector(`.history-item[data-id="${id}"]`);
+        if (itemEl) itemEl.remove();
+        // 如果删除的是当前展示的记录，清空展示区
+        if (String(currentHistoryId) === String(id)) {
+          currentHistoryId = null;
+          currentContent = '';
+          exitEditMode();
+          editBtn.disabled = true;
+          contentArea.innerHTML = '<div class="placeholder"><span class="icon">✨</span>输入主题后点击「生成内容」，AI 将为你创作文章</div>';
+          topicInput.value = '';
+          setStatus('');
+        }
+        // 列表空了则显示空提示
+        if (!historyList.querySelector('.history-item')) {
+          historyList.innerHTML = '<div class="empty-history">暂无历史记录</div>';
+        }
+        showToast('已删除');
+      } catch (err) {
+        showToast(err.message || '删除失败');
+      }
+    }
+
+    refreshBtn.addEventListener('click', loadHistory);
+
+    // ============ RAG 语义搜索 ============
+    let searchTimer = null;
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const query = searchInput.value.trim();
+      // 输入为空：恢复历史列表
+      if (!query) {
+        searchHint.textContent = '';
+        searchHint.classList.remove('error');
+        loadHistory();
+        return;
+      }
+      // 防抖：300ms 内不再输入才发起搜索，避免频繁请求
+      searchTimer = setTimeout(() => semanticSearch(query), 300);
+    });
+
+    async function semanticSearch(query) {
+      searchHint.textContent = '搜索中...';
+      searchHint.classList.remove('error');
+      try {
+        const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&top_k=10`, {
+          headers: { ...authHeaders() },
+        });
+        if (res.status === 401) {
+          handleUnauthorized('登录已过期，请重新登录');
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `搜索失败：${res.status}`);
+        }
+        const data = await res.json();
+
+        if (!data.results.length) {
+          historyList.innerHTML = '<div class="empty-history">未找到相关内容</div>';
+          searchHint.textContent = `无匹配结果（查询：${data.query}）`;
+          return;
+        }
+
+        // 渲染搜索结果，附带相似度百分比
+        historyList.innerHTML = data.results.map(item => {
+          const pct = (item.similarity * 100).toFixed(1);
+          return `
+            <div class="history-item search-result-item" data-id="${item.id}">
+              <div class="item-main">
+                <div class="topic">
+                  <span>${escapeHtml(item.topic)}</span>
+                </div>
+                <div class="time">${formatTime(item.created_at)}</div>
+                <span class="similarity-tag">相似度 ${pct}%</span>
+              </div>
+              <button class="delete-btn" data-id="${item.id}" title="删除" type="button">🗑</button>
+            </div>
+          `;
+        }).join('');
+
+        searchHint.textContent = `找到 ${data.total} 条语义相关结果`;
+
+        bindHistoryItemEvents();
+      } catch (err) {
+        searchHint.textContent = err.message;
+        searchHint.classList.add('error');
+      }
+    }
+
+    // ============ 复制功能 ============
+    copyBtn.addEventListener('click', async () => {
+      if (!currentContent) {
+        showToast('暂无内容可复制');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(currentContent);
+        showToast('已复制到剪贴板');
+      } catch {
+        // 降级方案
+        const textarea = document.createElement('textarea');
+        textarea.value = currentContent;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('已复制到剪贴板');
+      }
+    });
+
+    // ============ 内容编辑/保存 ============
+    // 进入编辑态：把展示区换成 textarea
+    function enterEditMode() {
+      if (isEditing) return;
+      isEditing = true;
+      const textarea = document.createElement('textarea');
+      textarea.id = 'contentEditor';
+      textarea.className = 'content-edit-area';
+      textarea.value = currentContent;
+      contentArea.innerHTML = '';
+      contentArea.appendChild(textarea);
+      textarea.focus();
+      editBtn.textContent = '保存';
+    }
+
+    // 退出编辑态：恢复展示（按 currentContent 重新渲染）
+    function exitEditMode() {
+      if (!isEditing) return;
+      isEditing = false;
+      editBtn.textContent = '编辑';
+      editBtn.classList.remove('saving');
+      contentArea.innerHTML = currentContent ? renderMarkdown(currentContent) : '<div class="placeholder"><span class="icon">✨</span>输入主题后点击「生成内容」，AI 将为你创作文章</div>';
+    }
+
+    // 编辑按钮：切换编辑/保存
+    editBtn.addEventListener('click', async () => {
+      if (!currentHistoryId) {
+        showToast('请先选择一条历史记录');
+        return;
+      }
+      if (!isEditing) {
+        enterEditMode();
+        return;
+      }
+      // 保存
+      const editor = document.getElementById('contentEditor');
+      const newContent = editor ? editor.value : '';
+      if (!newContent.trim()) {
+        showToast('内容不能为空');
+        return;
+      }
+      editBtn.classList.add('saving');
+      editBtn.textContent = '保存中...';
+      try {
+        const res = await fetch(`${API_BASE}/api/history/${currentHistoryId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ content: newContent }),
+        });
+        if (res.status === 401) {
+          handleUnauthorized('登录已过期，请重新登录');
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || '保存失败');
+        }
+        const data = await res.json();
+        currentContent = data.content;
+        exitEditMode();
+        setStatus('已保存', 'success');
+        showToast('保存成功');
+      } catch (err) {
+        showToast(err.message || '保存失败');
+        // 保存失败时保持编辑态，恢复按钮文字
+        editBtn.classList.remove('saving');
+        editBtn.textContent = '保存';
+      }
+    });
+
+    // ============ 工具函数 ============
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function formatTime(isoStr) {
+      const d = new Date(isoStr);
+      const now = new Date();
+      const diff = (now - d) / 1000;
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+      return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ============ 初始化 ============
+    initTheme();
+    // 先校验登录态：已登录则加载主界面，未登录则显示登录遮罩
+    checkAuth();
+  </script>
+</body>
+</html>
