@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ai-content-backend
+    name: ai-content-platform
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
@@ -27,5 +27,3 @@ services:
         value: "HS256"
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "10080"
-      - key: PYTHON_VERSION
-        value: "3.10"

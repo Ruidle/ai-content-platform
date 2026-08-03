@@ -26,6 +26,8 @@ from typing import AsyncGenerator
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -471,6 +473,21 @@ def semantic_search(
     )
 
     return SearchResponse(query=query, total=len(items), results=items)
+
+
+# ---------------- 前端静态文件服务（同域部署，无需 CORS） ----------------
+import os
+
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+
+if os.path.isdir(FRONTEND_DIR):
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        """所有非 /api 路径返回前端页面（SPA 单页应用）"""
+        index_path = os.path.join(FRONTEND_DIR, "index.html")
+        return FileResponse(index_path)
 
 
 # ---------------- 本地直接运行 ----------------
